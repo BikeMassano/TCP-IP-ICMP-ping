@@ -6,6 +6,7 @@
 #include <iostream>
 #include <windows.h>
 #include <ctime>
+#include "icmp_structs.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -18,37 +19,11 @@ using namespace std;
 const short TalkPort = 80; // Порт сокета
 const int DEFAULT_DATA_SIZE = 32;    // Размер данных по умолчанию в ICMP пакете
 const int DEFAULT_PACKET_COUNT = 4; // Количество передаваемых пакетов по умолчанию
-const float DEFAULT_INTERVAL = 1; // Интервал между отправкой пакетов по умолчанию
+const float DEFAULT_INTERVAL = 1.0f; // Интервал между отправкой пакетов по умолчанию
 
 int DATA_SIZE; // Размер данных в ICMP пакете
 int PACKET_COUNT; // Количество передаваемых пакетов
 float INTERVAL; // Интервал между отправкой пакетов (в секундах)
-
-// Структура ICMP Echo Request (Ping)
-struct icmp_echo_packet 
-{
-    unsigned char type;       // Тип сообщения (8 для echo request, 0 для echo reply) (1 байт)
-    unsigned char code;       // Подтип сообщения (0 для всего) (1 байт)
-    unsigned short checksum;   // Контрольная сумма сообщения (2 байта)
-    unsigned short identifier; // Идентификатор
-    unsigned short sequence;   // Порядковый номер
-    char* data;   // Дополнительные данные. Размер можно менять
-};
-
-// Структура IP-заголовка (для извлечения TTL)
-struct ip_header 
-{
-    unsigned char ip_verlen;       // IP Version and Length
-    unsigned char ip_tos;          // Type of Service
-    unsigned short ip_totallength; // Total Length
-    unsigned short ip_id;          // Identification
-    unsigned short ip_offset;      // Flags and Fragment Offset
-    unsigned char ip_ttl;          // Time To Live
-    unsigned char ip_protocol;     // Протокол
-    unsigned short ip_checksum;    // Контрольная сумма
-    unsigned int ip_srcaddr;     // Адрес источника
-    unsigned int ip_destaddr;    // Адрес назначения
-};
 
 // Инициализация Windows Sockets DLL
 int WinSockInit()
@@ -121,6 +96,18 @@ unsigned short calculate_checksum(unsigned short* buffer, int length)
     return answer;
 }
 
+// Функция создания RAW сокета
+SOCKET create_raw_socket() 
+{
+    SOCKET sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    if (sock == INVALID_SOCKET) 
+    {
+        cerr << "Ошибка: Не удалось создать сокет. Код ошибки: " << WSAGetLastError() << endl;
+        return INVALID_SOCKET;
+    }
+    return sock;
+}
+
 int main(int argc, char* argv[])
 {
     setlocale(LC_ALL, "rus");
@@ -155,13 +142,7 @@ int main(int argc, char* argv[])
     addr.sin_addr.s_addr = *(unsigned long*)host->h_addr_list[0];
 
     // Создание RAW сокета
-    SOCKET sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    if (sock == INVALID_SOCKET) 
-    {
-        cerr << "Ошибка: Не удалось создать сокет. Код ошибки: " << WSAGetLastError() << endl;
-        WinSockClose();
-        return 1;
-    }
+    SOCKET sock = create_raw_socket();
 
     // Установка времени ожидания ответа
     int timeout = 1000; // миллисекунды

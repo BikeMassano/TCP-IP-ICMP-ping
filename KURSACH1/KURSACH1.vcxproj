@@ -129,6 +129,9 @@
   <ItemGroup>
     <ClCompile Include="KURSACH1.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="icmp_structs.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

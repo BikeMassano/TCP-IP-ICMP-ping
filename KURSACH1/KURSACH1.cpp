@@ -119,12 +119,14 @@ int main(int argc, char* argv[])
 {
     setlocale(LC_ALL, "rus");
 
-    if (argc != 2) {
+    if (argc != 2) 
+    {
         cerr << "Использование: ping <имя_хоста>\n";
         return 1;
     }
 
-    if (WinSockInit() != 0) {
+    if (WinSockInit() != 0) 
+    {
         return 1;
     }
 
@@ -145,7 +147,8 @@ int main(int argc, char* argv[])
 
     // Создание RAW сокета
     SOCKET sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    if (sock == INVALID_SOCKET) {
+    if (sock == INVALID_SOCKET) 
+    {
         cerr << "Ошибка: Не удалось создать сокет. Код ошибки: " << WSAGetLastError() << endl;
         WinSockClose();
         return 1;

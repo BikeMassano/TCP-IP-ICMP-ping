@@ -16,7 +16,13 @@
 using namespace std;
 
 const short TalkPort = 80; // Порт сокета
-const int DATA_SIZE = 32;    // Размер данных в ICMP пакете
+const int DEFAULT_DATA_SIZE = 32;    // Размер данных по умолчанию в ICMP пакете
+const int DEFAULT_PACKET_COUNT = 4; // Количество передаваемых пакетов по умолчанию
+const float DEFAULT_INTERVAL = 1; // Интервал между отправкой пакетов по умолчанию
+
+int DATA_SIZE; // Размер данных в ICMP пакете
+int PACKET_COUNT; // Количество передаваемых пакетов
+float INTERVAL; // Интервал между отправкой пакетов (в секундах)
 
 // Структура ICMP Echo Request (Ping)
 struct icmp_echo_packet 
@@ -26,7 +32,7 @@ struct icmp_echo_packet
     unsigned short checksum;   // Контрольная сумма сообщения (2 байта)
     unsigned short identifier; // Идентификатор
     unsigned short sequence;   // Порядковый номер
-    char data[DATA_SIZE];   // Дополнительные данные. Размер можно менять
+    char* data;   // Дополнительные данные. Размер можно менять
 };
 
 // Структура IP-заголовка (для извлечения TTL)
@@ -118,6 +124,9 @@ unsigned short calculate_checksum(unsigned short* buffer, int length)
 int main(int argc, char* argv[])
 {
     setlocale(LC_ALL, "rus");
+    DATA_SIZE = DEFAULT_DATA_SIZE; // Инициализация размера данных по умолчанию
+    PACKET_COUNT = DEFAULT_PACKET_COUNT; // Инициализация количества передаваемых пакетов по умолчанию
+    INTERVAL = DEFAULT_INTERVAL; // Инициализация интервала между отправкой пакетов по умолчанию
 
     if (argc != 2) 
     {
@@ -163,23 +172,25 @@ int main(int argc, char* argv[])
     ping_request.code = 0;
     ping_request.identifier = GetCurrentProcessId(); // Используем ID процесса как идентификатор
     ping_request.sequence = 0;
-    memset(ping_request.data, 'A', sizeof(ping_request.data));  // Заполняем данными
+    ping_request.data = new char[DATA_SIZE]; // Выделяем память динамически
+    memset(ping_request.data, 'A', DATA_SIZE);  // Заполняем данными
     ping_request.checksum = 0;
-    ping_request.checksum = calculate_checksum((unsigned short*)&ping_request, sizeof(ping_request));
+    ping_request.checksum = calculate_checksum((unsigned short*)&ping_request, sizeof(icmp_echo_packet) - sizeof(char*) + DATA_SIZE);
 
-    cout << "Обмен пакетами с " << hostname << " [" << inet_ntoa(*(in_addr*)host->h_addr_list[0]) << "] с " << sizeof(ping_request.data) << " байтами данных:" << endl;
+    cout << "Обмен пакетами с " << hostname << " [" << inet_ntoa(*(in_addr*)host->h_addr_list[0]) << "] с " << DATA_SIZE << " байтами данных:" << endl;
 
-    for (size_t i = 0; i < 4; i++)
+    for (size_t i = 0; i < PACKET_COUNT; i++)
     {
         clock_t start_time;
         // Отправка ping запроса
         start_time = clock(); // Запоминаем время отправки
-        int bytes_sent = sendto(sock, (char*)&ping_request, sizeof(ping_request), 0, (sockaddr*)&addr, sizeof(addr));
+        int bytes_sent = sendto(sock, (char*)&ping_request, sizeof(icmp_echo_packet) - sizeof(char*) + DATA_SIZE, 0, (sockaddr*)&addr, sizeof(addr));
         if (bytes_sent == SOCKET_ERROR)
         {
             cerr << "Ошибка: Не удалось отправить ping запрос. Код ошибки: " << WSAGetLastError() << endl;
             stopTCP(sock);
             WinSockClose();
+            delete[] ping_request.data; // Освобождаем память
             return 1;
         }
 
@@ -219,8 +230,8 @@ int main(int argc, char* argv[])
                 cout << "Неверный ICMP ответ." << endl;
             }
         }
-        // Ждём секунду
-        Sleep(1000);
+        // Ожидание по интервалу
+        Sleep(INTERVAL*1000);
     }
 
     stopTCP(sock);

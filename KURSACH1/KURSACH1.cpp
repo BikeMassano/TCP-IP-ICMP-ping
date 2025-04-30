@@ -153,8 +153,9 @@ int main(int argc, char* argv[])
     ping_request.code = 0;
     ping_request.identifier = GetCurrentProcessId(); // Используем ID процесса как идентификатор
     ping_request.sequence = 0;
-    ping_request.data = new char[DATA_SIZE]; // Выделяем память динамически
+    ping_request.data = new char[DATA_SIZE + 1]; // Выделяем память динамически
     memset(ping_request.data, 'A', DATA_SIZE);  // Заполняем данными
+    ping_request.data[DATA_SIZE] = '\0';
     ping_request.checksum = 0;
     ping_request.checksum = calculate_checksum((unsigned short*)&ping_request, sizeof(icmp_echo_packet) - sizeof(char*) + DATA_SIZE);
 
